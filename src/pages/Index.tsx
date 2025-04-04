@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,8 +7,9 @@ import CreateBuddyForm from "@/components/CreateBuddyForm";
 import BuddyChatUI from "@/components/BuddyChatUI";
 import BuddySettings from "@/components/BuddySettings";
 import { AIBuddy } from "@/types/buddy";
-import { PlusCircle, BrainCircuit } from "lucide-react";
+import { PlusCircle, BrainCircuit, Wand2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
 
 const DEFAULT_BUDDIES: AIBuddy[] = [
   {
@@ -137,6 +139,14 @@ const Index = () => {
           <p className="text-xl text-muted-foreground max-w-lg mx-auto">
             Create and customize your own AI companions with unique personalities
           </p>
+          <div className="mt-4">
+            <Link to="/transform">
+              <Button variant="outline" className="gap-2">
+                <Wand2 size={18} />
+                Try Image Transformer
+              </Button>
+            </Link>
+          </div>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-6xl mx-auto">
