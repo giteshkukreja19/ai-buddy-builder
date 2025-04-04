@@ -6,33 +6,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Upload, Download, Image as ImageIcon, Wand2 } from "lucide-react";
+import { HfInference } from "@huggingface/inference";
 
 const transformationStyles = [
   {
     id: "portrait-sketch",
     name: "Portrait Sketch",
     description: "Highly detailed hand-drawn portrait with fine pencil strokes and grayscale shading",
-    prompt: "Transform this image into a highly detailed, hand-drawn portrait sketch. Use fine pencil strokes to capture the subject's facial features with lifelike accuracy and expressive depth. Apply soft grayscale shading to define contours and shadows, with gentle lighting that enhances the mood and realism."
+    model: "vinesmsuic/portraitsketch-diffusion",
+    prompt: "Transform this image into a highly detailed, hand-drawn portrait sketch."
   },
   {
     id: "ghibli",
     name: "Studio Ghibli",
     description: "Soft, dreamy animation style with vibrant colors and whimsical elements",
-    prompt: "Reimagine this image in the style of a Studio Ghibli animated film — soft, dreamy, and full of warmth. Transform the subject and background using hand-painted textures, gentle lighting, and vibrant colors with a slightly nostalgic tone. Emphasize large expressive eyes, smooth skin tones, and painterly shading."
+    model: "nitrosocke/Ghibli-Diffusion",
+    prompt: "Reimagine this image in the style of a Studio Ghibli animated film."
   },
   {
     id: "anime",
     name: "Anime Style",
     description: "Bold lines, vibrant colors, and expressive anime aesthetics",
-    prompt: "Convert this image into anime style artwork with clean, bold outlines, vibrant colors, and expressive features. Use flat color areas with subtle shading and highlights. Emphasize large, emotional eyes and stylized hair."
+    model: "cagliostrolab/animagine-xl-3.1",
+    prompt: "Convert this image into anime style artwork with clean, bold outlines."
   },
   {
     id: "watercolor",
     name: "Watercolor Painting",
     description: "Soft, flowing watercolor art with gentle color blending",
-    prompt: "Transform this image into a delicate watercolor painting. Create soft, transparent washes of color with gentle bleeding edges. Show visible paper texture and subtle color gradients. Maintain a light, airy feel with minimal detail."
+    model: "cyborgcamel/WatercolorDiffusion",
+    prompt: "Transform this image into a delicate watercolor painting."
   }
 ];
+
+// Initialize the Hugging Face Inference client
+// Note: In production, you'd want to handle API keys securely
+const inference = new HfInference();
 
 const ImageTransformer = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -71,7 +80,70 @@ const ImageTransformer = () => {
     fileInputRef.current?.click();
   };
 
-  const handleTransform = () => {
+  const applySimulatedTransform = (imageDataUrl: string) => {
+    return new Promise<string>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          resolve(imageDataUrl); // Fallback if canvas context can't be created
+          return;
+        }
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw the original image
+        ctx.drawImage(img, 0, 0);
+        
+        // Apply a style based on selection (basic canvas filters)
+        switch (selectedStyle) {
+          case 'portrait-sketch':
+            // Apply grayscale
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+              const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              data[i] = avg; // red
+              data[i + 1] = avg; // green
+              data[i + 2] = avg; // blue
+            }
+            ctx.putImageData(imageData, 0, 0);
+            break;
+            
+          case 'ghibli':
+            // Simulate Ghibli style with color saturation
+            ctx.filter = 'saturate(130%) brightness(105%)';
+            ctx.drawImage(img, 0, 0);
+            break;
+            
+          case 'anime':
+            // Simulate anime style with high contrast
+            ctx.filter = 'contrast(120%) saturate(110%)';
+            ctx.drawImage(img, 0, 0);
+            break;
+            
+          case 'watercolor':
+            // Simulate watercolor with blur and brightness
+            ctx.filter = 'blur(1px) brightness(105%)';
+            ctx.drawImage(img, 0, 0);
+            break;
+            
+          default:
+            // No filter
+            break;
+        }
+        
+        resolve(canvas.toDataURL('image/png'));
+      };
+      
+      img.src = imageDataUrl;
+    });
+  };
+
+  const handleTransform = async () => {
     if (!selectedImage || !selectedStyle) {
       toast({
         title: "Missing information",
@@ -83,18 +155,26 @@ const ImageTransformer = () => {
 
     setIsLoading(true);
     
-    // Simulate transformation with a timeout (in a real app, you would call an AI service)
-    setTimeout(() => {
-      // For demo purposes, we're just using the original image
-      // In a real implementation, you would send the image to an AI service
-      setTransformedImage(selectedImage);
-      setIsLoading(false);
+    try {
+      // For browser-only implementation, we're using canvas-based effects
+      // In a production app, you'd call a real API endpoint here
+      const transformedImageData = await applySimulatedTransform(selectedImage);
+      setTransformedImage(transformedImageData);
       
       toast({
         title: "Transformation complete!",
         description: `Image transformed using ${transformationStyles.find(style => style.id === selectedStyle)?.name} style`,
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Error transforming image:", error);
+      toast({
+        title: "Transformation failed",
+        description: "There was an error transforming your image.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDownload = () => {
